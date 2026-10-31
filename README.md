@@ -1,143 +1,111 @@
-# Classical Vehicle Tracking & Feature Extraction
+# Classical Vehicle Tracker
 
-## 1. Project Overview
+A vehicle motion tracker built with classical computer vision (no deep learning). Moving vehicles are detected with background subtraction, then tracked frame by frame using three classical approaches that can be compared side by side:
 
-This project implements a classical computer vision-based vehicle motion tracker using Python and OpenCV. It processes traffic videos frame by frame to detect moving regions, track visual features, and estimate displacement without relying on deep learning models.
+- Lucas-Kanade sparse optical flow
+- ORB feature matching with Hamming distance
+- SIFT feature matching with L2 distance
 
-Three tracking approaches are implemented and compared:
+The two feature-matching trackers use Lowe's ratio test and RANSAC to remove bad matches.
 
-- Lucas–Kanade (LK) sparse optical flow
-- ORB feature matching
-- SIFT feature matching
+## Demo
 
-## 2. Objectives
+![Vehicle tracking demo](outputs/tracking_demo.gif)
 
-- Process traffic videos using OpenCV.
-- Detect moving regions using background subtraction.
-- Track feature points across consecutive frames.
-- Estimate movement using optical flow and feature matching.
-- Filter unreliable correspondences using forward-backward validation, Lowe's ratio test, and RANSAC.
-- Generate processed videos and an animated GIF to demonstrate the tracking results.
+The demo shows the Lucas-Kanade tracker. Blue boxes are detected vehicles, red dots are tracked points, green trails show recent point motion, and each yellow arrow with its label shows that vehicle's displacement in pixels per frame. The ORB and SIFT trackers draw the same overlay.
 
-## 3. Technologies Used
+## Result videos
 
-- **Python** — Main programming language.
-- **OpenCV** — Video processing, background subtraction, feature detection, optical flow, and motion estimation.
-- **NumPy** — Array operations and coordinate calculations.
-- **ImageIO** — Writing processed video output.
-- **Pillow (PIL)** — Creating the animated GIF.
+The full annotated video for each method is saved in the `outputs` folder. GitHub does not play MP4 files placed in a README by relative path, so these are links that open the video in the repository:
 
-## 4. Tracking Methods
+- [Lucas-Kanade optical flow](outputs/tracked_lk.mp4)
+- [ORB feature matching](outputs/tracked_orb.mp4)
+- [SIFT feature matching](outputs/tracked_sift.mp4)
 
-### 4.1 Lucas–Kanade Optical Flow
+## How it works
 
-- Detects feature points using Shi–Tomasi corner detection.
-- Tracks points between consecutive frames using `cv2.calcOpticalFlowPyrLK()`.
-- Uses forward-backward validation to reject unreliable points.
-- Draws movement trails and estimates displacement in pixels per frame.
+All three trackers share the same detection stage, then differ in how they follow points between frames.
 
-### 4.2 ORB Feature Matching
+**1. Vehicle detection (shared).** A MOG2 background subtractor finds moving pixels. Morphological opening and closing clean up the mask, and contours above a minimum area become vehicle bounding boxes.
 
-- Detects and describes visual features using ORB.
-- Matches binary descriptors using Hamming distance.
-- Applies Lowe's ratio test to remove ambiguous matches.
-- Uses RANSAC to filter inconsistent correspondences.
+**2. Point tracking (one of three methods).**
 
-### 4.3 SIFT Feature Matching
+| Method | Keypoints | Correspondence | Outlier removal |
+|---|---|---|---|
+| `lk` | Shi-Tomasi corners inside vehicle boxes | Pyramidal Lucas-Kanade optical flow (15 x 15 window, 2 pyramid levels) | Forward-backward error check (1.0 px) |
+| `orb` | ORB keypoints in moving regions | Brute-force matching, Hamming distance | Lowe's ratio test (0.75), then RANSAC per vehicle |
+| `sift` | SIFT keypoints in moving regions | Brute-force matching, L2 norm | Lowe's ratio test (0.75), then RANSAC per vehicle |
 
-- Detects distinctive keypoints and generates gradient-based descriptors.
-- Matches descriptors using the L2 distance metric.
-- Applies Lowe's ratio test and RANSAC-based verification.
-- Estimates feature displacement between consecutive frames.
+For the feature-matching methods, keypoints are detected only inside the dilated moving-region mask, so the static background is ignored. Descriptors from the previous frame are matched to the current frame. A match is kept only if its best distance is clearly smaller than the second-best distance (Lowe's ratio test). Then, for each vehicle box, RANSAC fits a similarity transform with `estimateAffinePartial2D` and keeps only the inlier matches.
 
-## 5. Vehicle Detection and Motion Estimation
+**3. Displacement.** For each vehicle, the displacement is the median motion of the surviving points inside its box, drawn as an arrow and labelled in pixels per frame.
 
-The program uses the MOG2 background subtractor to identify moving regions. Morphological opening and closing help reduce noise in the foreground mask.
+## Project structure
 
-Contours are used to create bounding boxes around moving regions. Feature points within these regions are used to estimate displacement, which is visualized through motion trails, arrows, and pixel-per-frame labels.
-
-**Note:** Background subtraction may detect moving objects other than vehicles. The reported displacement is image-space motion, not real-world speed in kilometres per hour.
-
-## 6. Results and Visual Demonstrations
-
-The following animated GIF demonstrates the Lucas–Kanade tracking output.
-
-### 6.1 Lucas–Kanade Optical Flow
-
-![Lucas–Kanade Optical Flow Tracking](outputs/tracking_demo_lk.gif)
-
-Lucas–Kanade tracks selected feature points between consecutive frames and visualizes their movement using points and trails.
-
-## 7. Output Files
-
-| File | Description |
-|---|---|
-| `tracked_lk.mp4` | Processed video using Lucas–Kanade |
-| `tracked_orb.mp4` | Processed video using ORB |
-| `tracked_sift.mp4` | Processed video using SIFT |
-| `tracking_demo_lk.gif` | Lucas–Kanade animated demonstration |
-
-## 8. Project Structure
-
-```text
+```
 classical-vehicle-tracker/
-├── videos/
-│   └── traffic.mp4
-├── outputs/
-│   ├── tracked_lk.mp4
-│   ├── tracked_orb.mp4
-│   ├── tracked_sift.mp4
-│   └── tracking_demo_lk.gif
-├── vehicle_tracker.py
-└── README.md
+    vehicle_tracker.py
+    README.md
+    requirements.txt
+    videos/
+        traffic.mp4
+    outputs/
+        tracked_lk.mp4
+        tracked_orb.mp4
+        tracked_sift.mp4
+        tracking_demo.gif
 ```
 
-## 9. Installation and Execution
+## Setup
 
-### Step 1: Install Dependencies
+Requires Python 3.9 or newer. SIFT needs OpenCV 4.4 or newer.
 
-Run the following command in the VS Code terminal:
-
-```bash
-py -m pip install opencv-python numpy imageio imageio-ffmpeg Pillow
+```
+py -m pip install -r requirements.txt
 ```
 
-### Step 2: Add the Input Video
+`requirements.txt` contains `opencv-python`, `numpy`, `imageio`, `imageio-ffmpeg` and `pillow`. The `imageio-ffmpeg` package bundles the encoder used to write H.264 video, so ffmpeg does not need to be installed separately.
 
-Place the traffic video at:
+## Usage
 
-```text
-videos/traffic.mp4
+Place the input video at `videos/traffic.mp4`, then run:
+
 ```
-
-### Step 3: Run the Program
-
-Execute the following command from the project root directory:
-
-```bash
 py vehicle_tracker.py
 ```
 
-The script processes the video using all three methods and saves the processed videos and the Lucas–Kanade animated GIF in the `outputs/` directory.
+This runs the three methods one after another. Each one writes an annotated video to the `outputs` folder (`tracked_lk.mp4`, `tracked_orb.mp4` and `tracked_sift.mp4`). A single GIF, `tracking_demo.gif`, is made from the Lucas-Kanade run. To run fewer methods, edit the `METHODS` list near the top of `vehicle_tracker.py`, for example `METHODS = ["lk"]` for Lucas-Kanade only. Frames are processed at 960 px wide for speed, whatever the source resolution. On the test machine the full 699-frame clip took about 52 s for Lucas-Kanade, 74 s for ORB and 148 s for SIFT, so SIFT is the slowest of the three. Times on other machines will differ.
 
-## 10. Limitations
+## Configuration
 
-- Background subtraction may produce false detections because of shadows, lighting changes, or background movement.
-- Feature tracking can lose points when objects are occluded or move rapidly.
-- Bounding boxes are based on moving regions rather than a dedicated vehicle classification model.
-- Motion estimates are expressed in pixels per frame and are not calibrated real-world velocities.
-- The methods do not currently maintain persistent identities for individual vehicles.
+Settings are constants at the top of `vehicle_tracker.py`:
 
-## 11. Future Improvements
+| Constant | Default | Effect |
+|---|---|---|
+| `PROCESS_WIDTH` | 960 | Width frames are resized to before processing |
+| `RESEED_EVERY` | 5 | Lucas-Kanade only: frames between adding new points |
+| `FB_THRESHOLD` | 1.0 | Lucas-Kanade only: maximum forward-backward error (pixels) |
+| `MAX_FEATURES` | 1500 | ORB and SIFT: maximum keypoints per frame |
+| `RATIO_THRESHOLD` | 0.75 | ORB and SIFT: Lowe's ratio test cutoff (lower is stricter) |
+| `RANSAC_THRESHOLD` | 3.0 | ORB and SIFT: RANSAC inlier distance (pixels) |
+| `MIN_MATCHES` | 4 | ORB and SIFT: matches needed in a box before RANSAC runs |
+| `MIN_AREA_RATIO` | 0.0008 | Smallest blob (fraction of the frame) counted as a vehicle |
+| `TRAIL_FADE` | 0.9 | How quickly trails fade (lower fades faster) |
+| `METHODS` | `["lk", "orb", "sift"]` | Which trackers to run |
+| `GIF_METHOD` | `"lk"` | Which method the demo GIF is made from |
+| `GIF_STEP` / `GIF_WIDTH` / `MAX_GIF_FRAMES` | 4 / 480 / 70 | GIF frame sampling, width and length |
 
-- Introduce persistent vehicle IDs across frames.
-- Improve separation of overlapping vehicles.
-- Use camera calibration to estimate real-world displacement and speed.
-- Compare the accuracy and computational efficiency of LK, ORB, and SIFT.
-- Improve robustness under occlusion and changing illumination.
+If vehicles are missed, lower `MIN_AREA_RATIO` or the `varThreshold` value in the MOG2 call. If one vehicle is split into two boxes, raise the closing `iterations` in `vehicle_mask`.
 
-## 12. Conclusion
+## Limitations
 
-This project demonstrates how classical computer vision techniques can be used to track motion in traffic videos. Comparing Lucas–Kanade optical flow with ORB and SIFT feature matching provides practical insight into feature correspondence, motion estimation, and visual tracking.
+- Assumes a static camera. Camera shake or panning makes the whole background look like motion.
+- Boxes are detected independently in each frame, so vehicles do not keep a persistent ID across frames.
+- In dense traffic, MOG2 can split one large vehicle into two boxes or merge two close vehicles into one.
+- Vehicles that stop for a long time are gradually absorbed into the background and stop being detected.
+- Small or distant vehicles have few distinctive keypoints, so feature matching is less reliable on them than on large nearby ones.
+- Displacement is in pixels per frame, not real-world speed. Converting to km/h would need camera calibration.
 
-The generated videos and animated GIF provide visual evidence of the implemented tracking approaches.
+## Tools
+
+Python, OpenCV, NumPy, imageio, Pillow.
