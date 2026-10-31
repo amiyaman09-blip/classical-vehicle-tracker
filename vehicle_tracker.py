@@ -114,9 +114,9 @@ def ransac_filter(src, dst, boxes):
 
 
 def run(method):
-    make_gif = len(METHODS) == 1 or method == GIF_METHOD
     out_video = f"{OUTPUT_DIR}/tracked_{method}.mp4"
     out_gif = f"{OUTPUT_DIR}/tracking_demo.gif"
+    make_gif = len(METHODS) == 1 or method == GIF_METHOD
 
     cap = cv2.VideoCapture(INPUT_VIDEO)
     if not cap.isOpened():
@@ -267,6 +267,10 @@ def run(method):
     print(f"[{method.upper()}] Total frames processed:", frame_count)
     return True
 
+
+for method in METHODS:
+    if method not in ("lk", "orb", "sift"):
+        raise SystemExit("METHODS can only contain 'lk', 'orb' and 'sift'")
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
