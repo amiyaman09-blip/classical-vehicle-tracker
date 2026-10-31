@@ -16,11 +16,11 @@ The demo shows the Lucas-Kanade tracker. Blue boxes are detected vehicles, red d
 
 ## Result videos
 
-The full annotated video for each method is saved in the `outputs` folder. GitHub does not play MP4 files placed in a README by relative path, so these are links that open the video in the repository:
+The full annotated video for each method is saved in the `outputs` folder. GitHub cannot preview MP4 files in its file viewer, so these links open or download the raw video file:
 
-- [Lucas-Kanade optical flow](outputs/tracked_lk.mp4)
-- [ORB feature matching](outputs/tracked_orb.mp4)
-- [SIFT feature matching](outputs/tracked_sift.mp4)
+- [Lucas-Kanade optical flow](outputs/tracked_lk.mp4?raw=true)
+- [ORB feature matching](outputs/tracked_orb.mp4?raw=true)
+- [SIFT feature matching](outputs/tracked_sift.mp4?raw=true)
 
 ## How it works
 
