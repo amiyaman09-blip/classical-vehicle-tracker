@@ -90,9 +90,9 @@ Everything the script produces is saved in the [`outputs`](outputs/) folder:
 | File | What it is |
 |---|---|
 | [`tracking_demo.gif`](outputs/tracking_demo.gif) | About 5.6 s preview of the Lucas-Kanade run, shown at the top of this page |
-| [`tracked_lk.mp4`](outputs/tracked_lk.mp4?raw=true) | Full annotated video from the Lucas-Kanade tracker |
-| [`tracked_orb.mp4`](outputs/tracked_orb.mp4?raw=true) | Full annotated video from the ORB tracker |
-| [`tracked_sift.mp4`](outputs/tracked_sift.mp4?raw=true) | Full annotated video from the SIFT tracker |
+| [`tracked_lk.mp4`](https://github.com/amiyaman09-blip/classical-vehicle-tracker/raw/main/outputs/tracked_lk.mp4) | Full annotated video from the Lucas-Kanade tracker |
+| [`tracked_orb.mp4`](https://github.com/amiyaman09-blip/classical-vehicle-tracker/raw/main/outputs/tracked_orb.mp4) | Full annotated video from the ORB tracker |
+| [`tracked_sift.mp4`](https://github.com/amiyaman09-blip/classical-vehicle-tracker/raw/main/outputs/tracked_sift.mp4) | Full annotated video from the SIFT tracker |
 
 GitHub cannot preview MP4 files in its file viewer, so the video links open or download the raw file. The GIF is made from the method set in `GIF_METHOD` (Lucas-Kanade by default), or from the only method in `METHODS` if just one is listed.
 
