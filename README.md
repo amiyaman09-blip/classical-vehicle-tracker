@@ -1,137 +1,250 @@
 # Classical Vehicle Tracker
 
-A vehicle motion tracker built with classical computer vision (no deep learning). It detects moving vehicles in a traffic video using background subtraction, then tracks their motion frame by frame using Lucas-Kanade sparse optical flow, ORB feature matching or SIFT feature matching.
+A vehicle motion tracking project built using classical computer vision techniques in Python and OpenCV, without relying on deep learning.
 
-![Vehicle tracking demo](outputs/tracking_demo.gif)
+The project implements three tracking methods: **Lucas-Kanade (LK) Optical Flow, ORB, and SIFT**. It explores vehicle detection and motion tracking using both regular traffic footage and dashcam footage involving additional camera movement.
 
-## What it does
+## Tracking Demonstrations
+
+### 1. Regular Traffic Footage
+
+The first implementation detects moving vehicles using background subtraction and tracks their movement across consecutive frames.
+
+![Regular Traffic Tracking Demo](outputs/tracking_demo.gif)
+
+### 2. Dashcam Footage
+
+A second implementation was developed specifically for dashcam footage, where the camera itself is moving. It uses individually initialized vehicle bounding boxes and feature-based motion estimation to track vehicles across frames.
+
+![Dashcam Tracking Demo](output2/tracking_demo.gif)
+
+Both implementations support Lucas-Kanade, ORB, and SIFT, with a configurable option to choose which method's output is used to generate the animated GIF.
+
+## What It Does
+
+### Regular Traffic Tracker
 
 For every frame of the input video, the tracker:
 
-1. Detects moving vehicles with MOG2 background subtraction and draws a bounding box around each one.
-2. Finds points to follow inside those boxes only, so the background is not tracked:
+1. Detects moving regions using MOG2 background subtraction.
+2. Applies morphological opening and closing to clean the foreground mask.
+3. Identifies moving objects using contour detection and draws bounding boxes.
+4. Detects feature points within the vehicle regions:
    - `lk`: Shi-Tomasi corner features.
    - `orb`: ORB keypoints with binary descriptors.
    - `sift`: SIFT keypoints with floating-point descriptors.
-3. Links each point from the previous frame to the current one:
-   - `lk`: pyramidal Lucas-Kanade optical flow.
-   - `orb`: brute-force descriptor matching with Hamming distance.
-   - `sift`: brute-force descriptor matching with L2 distance.
-4. Rejects unreliable tracks:
-   - `lk`: forward-backward consistency check.
-   - `orb` and `sift`: Lowe's ratio test, then RANSAC inside each vehicle box.
-5. Estimates each vehicle's displacement as the median motion of the points inside its box, drawn as an arrow with a label in pixels per frame.
-6. Draws fading green trails showing recent point motion.
+5. Tracks feature points between consecutive frames using the selected method.
+6. Filters unreliable points using forward-backward validation, Lowe's ratio test, and RANSAC.
+7. Estimates vehicle displacement using the median movement of tracked points.
+8. Visualizes movement through bounding boxes, directional arrows, pixel-per-frame labels, and fading green trails.
 
-The result for each method is saved as an annotated video, and a short GIF is made from one of them.
+### Dashcam Tracker
 
-## How it works
+The second implementation handles footage where the camera itself is moving.
+
+It:
+
+1. Initializes individual vehicle tracks using specified starting frames and bounding boxes.
+2. Detects feature points within each vehicle's search region.
+3. Uses LK optical flow or ORB/SIFT feature matching to estimate movement.
+4. Applies RANSAC-based affine motion estimation to filter unreliable matches.
+5. Updates vehicle bounding boxes based on estimated movement and scale changes.
+6. Maintains individual vehicle IDs and removes tracks that are lost or no longer sufficiently visible.
+7. Displays bounding boxes, movement trails, directional arrows, and displacement estimates.
+
+## How It Works
 
 | Stage | Technique | Purpose |
 |---|---|---|
-| Vehicle detection | MOG2 background subtractor, morphological open and close, contour area filter | Find moving blobs and turn them into bounding boxes |
-| Feature selection (`lk`) | Shi-Tomasi corners (`goodFeaturesToTrack`) restricted to the boxes | Choose points worth tracking on vehicles |
-| Feature selection (`orb`, `sift`) | `ORB_create` or `SIFT_create` keypoints and descriptors, restricted to the moving-region mask | Find distinctive points that can be recognised in the next frame |
-| Motion tracking (`lk`) | Pyramidal Lucas-Kanade optical flow | Follow each point between consecutive frames |
-| Matching (`orb`, `sift`) | `BFMatcher` with Hamming distance (ORB) or L2 norm (SIFT), `knnMatch` with k = 2 | Find the same point in the next frame |
-| Outlier rejection (`lk`) | Forward-backward error check (threshold 1.0 px) | Drop points whose flow is not reversible |
-| Outlier rejection (`orb`, `sift`) | Lowe's ratio test (0.75), then RANSAC with `estimateAffinePartial2D` (3 px) per vehicle | Drop ambiguous and inconsistent matches |
-| Displacement | Median of per-point motion inside each box | A robust per-vehicle motion estimate |
+| Vehicle detection | MOG2 background subtraction | Identify moving regions |
+| Feature selection (LK) | Shi-Tomasi corners | Find suitable points to track |
+| Feature selection (ORB/SIFT) | Keypoint and descriptor detection | Identify distinctive features |
+| Motion tracking (LK) | Pyramidal Lucas-Kanade | Follow points between frames |
+| Feature matching | BFMatcher with Hamming or L2 distance | Match corresponding features |
+| Match filtering | Lowe's ratio test | Remove ambiguous matches |
+| Motion estimation | RANSAC and affine transformation | Estimate reliable movement |
+| Displacement | Median point displacement / affine transformation | Estimate vehicle movement |
 
-Lucas-Kanade assumes that pixel intensity stays roughly constant and that motion is small within a local window (15 x 15 here, with 2 pyramid levels to handle larger motion). The feature-matching methods do not need small motion, but they need enough distinctive keypoints on each vehicle. RANSAC needs at least 4 matches inside a box before it runs.
+## Tracking Methods
 
-## Project structure
+### 1. Lucas-Kanade (LK)
 
-```
+Uses sparse optical flow to track feature points between consecutive frames. It assumes approximately constant pixel intensity within a local neighbourhood.
+
+- Uses Shi-Tomasi corner detection.
+- Uses pyramidal optical flow to handle larger movements.
+- Uses forward-backward validation to remove unreliable points.
+
+### 2. ORB
+
+ORB stands for Oriented FAST and Rotated BRIEF.
+
+- Detects keypoints and generates binary descriptors.
+- Uses Hamming distance for descriptor matching.
+- Is relatively fast and suitable for real-time applications.
+
+### 3. SIFT
+
+SIFT stands for Scale-Invariant Feature Transform.
+
+- Detects distinctive keypoints using scale-space analysis.
+- Generates floating-point descriptors.
+- Uses L2 distance for matching.
+- Is more robust to scale and rotation changes, although computationally more expensive.
+
+## Regular Traffic vs Dashcam Implementation
+
+| Aspect | Regular Traffic | Dashcam |
+|---|---|---|
+| Camera | Relatively stationary | Moving camera |
+| Vehicle initialization | Background subtraction | Specified starting frames and bounding boxes |
+| Tracking methods | LK, ORB, SIFT | LK, ORB, SIFT |
+| Motion estimation | Median feature displacement | RANSAC-based affine transformation |
+| Vehicle IDs | No persistent IDs | Individual vehicle IDs |
+| Main challenge | Vehicle detection and feature tracking | Tracking under camera movement |
+
+## Project Structure
+
+```text
 classical-vehicle-tracker/
-    vehicle_tracker.py
-    README.md
-    requirements.txt
-    videos/
-        traffic.mp4
-    outputs/
-        tracked_lk.mp4
-        tracked_orb.mp4
-        tracked_sift.mp4
-        tracking_demo.gif
+│
+├── vehicle_tracker.py
+├── vehicle_tracker2.py
+├── README.md
+├── requirements.txt
+│
+├── videos/
+│   └── traffic.mp4
+│
+├── outputs/
+│   ├── tracked_lk.mp4
+│   ├── tracked_orb.mp4
+│   ├── tracked_sift.mp4
+│   └── tracking_demo.gif
+│
+├── video/
+│   └── video.mp4
+│
+└── output2/
+    ├── tracked_lk.mp4
+    ├── tracked_orb.mp4
+    ├── tracked_sift.mp4
+    └── tracking_demo.gif
 ```
 
 ## Setup
 
-Requires Python 3.9 or newer. SIFT needs OpenCV 4.4 or newer.
+Requires Python 3.9 or newer. SIFT requires OpenCV 4.4 or newer.
 
-```
+Install the required libraries:
+
+```bash
 py -m pip install opencv-python numpy imageio imageio-ffmpeg pillow
 ```
 
-`imageio-ffmpeg` bundles the ffmpeg encoder used to write the H.264 output video, so ffmpeg does not need to be installed separately.
-
 ## Usage
 
-Place the input video at `videos/traffic.mp4`, then run:
+### Regular Traffic Tracker
 
-```
+Place the input video inside the `videos` folder and run:
+
+```bash
 py vehicle_tracker.py
 ```
 
-This runs the methods listed in `METHODS` one after another and prints a short summary as each one finishes. When it is done, the results are in the `outputs` folder:
+### Dashcam Tracker
 
-- `tracked_lk.mp4`, `tracked_orb.mp4` and `tracked_sift.mp4`: the annotated videos for each method
-- `tracking_demo.gif`: a short preview of the Lucas-Kanade run, used in this README
+Place the dashcam input video inside the `video` folder and run:
 
-To run fewer methods, edit the `METHODS` list near the top of `vehicle_tracker.py`, for example `METHODS = ["lk"]` for Lucas-Kanade only. It may contain only `"lk"`, `"orb"` and `"sift"`; anything else stops the script with an error message.
+```bash
+py vehicle_tracker2.py
+```
 
-The script processes frames at 960 px wide for speed, regardless of the source resolution.
+Make sure the input path in the dashcam script matches the folder structure:
+
+```python
+INPUT_VIDEO = "video/video.mp4"
+```
+
+Both scripts generate their respective outputs in separate folders.
+
+## GIF Configuration
+
+Both implementations allow the user to configure which tracking method generates the animated GIF.
+
+The following variables are used:
+
+```python
+METHODS = ["lk", "orb", "sift"]
+GIF_METHOD = "lk"
+```
+
+- `METHODS` specifies which tracking methods will run.
+- `GIF_METHOD` specifies which method's output will be converted into an animated GIF.
+
+For example, setting `GIF_METHOD = "orb"` generates the GIF using ORB, while all three methods can still generate their respective processed videos.
 
 ## Outputs
 
-Everything the script produces is saved in the [`outputs`](outputs/) folder:
+### Regular Traffic
 
-| File | What it is |
+| File | Description |
 |---|---|
-| [`tracking_demo.gif`](outputs/tracking_demo.gif) | About 5.6 s preview of the Lucas-Kanade run, shown at the top of this page |
-| [`tracked_lk.mp4`](https://github.com/amiyaman09-blip/classical-vehicle-tracker/raw/main/outputs/tracked_lk.mp4) | Full annotated video from the Lucas-Kanade tracker |
-| [`tracked_orb.mp4`](https://github.com/amiyaman09-blip/classical-vehicle-tracker/raw/main/outputs/tracked_orb.mp4) | Full annotated video from the ORB tracker |
-| [`tracked_sift.mp4`](https://github.com/amiyaman09-blip/classical-vehicle-tracker/raw/main/outputs/tracked_sift.mp4) | Full annotated video from the SIFT tracker |
+| `tracked_lk.mp4` | Lucas-Kanade tracking output |
+| `tracked_orb.mp4` | ORB tracking output |
+| `tracked_sift.mp4` | SIFT tracking output |
+| `tracking_demo.gif` | Animated tracking demonstration |
 
-GitHub cannot preview MP4 files in its file viewer, so the video links open or download the raw file. The GIF is made from the method set in `GIF_METHOD` (Lucas-Kanade by default), or from the only method in `METHODS` if just one is listed.
+### Dashcam
 
-## Configuration
+| File | Description |
+|---|---|
+| `tracked_lk.mp4` | Lucas-Kanade dashcam tracking output |
+| `tracked_orb.mp4` | ORB dashcam tracking output |
+| `tracked_sift.mp4` | SIFT dashcam tracking output |
+| `tracking_demo.gif` | Animated dashcam tracking demonstration |
 
-Settings are constants at the top of `vehicle_tracker.py`:
+## Important Parameters
 
-| Constant | Default | Effect |
-|---|---|---|
-| `METHODS` | `["lk", "orb", "sift"]` | Which trackers to run |
-| `GIF_METHOD` | `"lk"` | Which method the demo GIF is made from |
-| `PROCESS_WIDTH` | 960 | Width frames are resized to before processing |
-| `MIN_AREA_RATIO` | 0.0008 | Smallest blob (as a fraction of the frame) counted as a vehicle |
-| `TRAIL_FADE` | 0.9 | How quickly the green trails fade (lower fades faster) |
-| `RESEED_EVERY` | 5 | `lk`: frames between adding new feature points |
-| `FB_THRESHOLD` | 1.0 | `lk`: maximum forward-backward error (pixels) to keep a point |
-| `MAX_FEATURES` | 1500 | `orb`, `sift`: maximum keypoints per frame |
-| `RATIO_THRESHOLD` | 0.75 | `orb`, `sift`: Lowe's ratio test cutoff (lower is stricter) |
-| `RANSAC_THRESHOLD` | 3.0 | `orb`, `sift`: RANSAC inlier distance (pixels) |
-| `MIN_MATCHES` | 4 | `orb`, `sift`: matches needed in a box before RANSAC runs |
-| `GIF_STEP` / `GIF_WIDTH` / `MAX_GIF_FRAMES` | 4 / 480 / 70 | GIF frame sampling, width, and length |
-| `GIF_FRAME_MS` | 80 | Time each GIF frame is shown (milliseconds) |
-
-If vehicles are missed, lower `MIN_AREA_RATIO` or the `varThreshold` value in the MOG2 call. If one vehicle is split into two boxes, raise the closing `iterations` in `vehicle_mask`. If feature matching gives too many wrong matches, lower `RATIO_THRESHOLD` or `RANSAC_THRESHOLD`.
+| Parameter | Purpose |
+|---|---|
+| `PROCESS_WIDTH` | Controls processing resolution |
+| `MAX_FEATURES` | Maximum number of ORB/SIFT features |
+| `FB_THRESHOLD` | Maximum forward-backward error for LK |
+| `RATIO_THRESHOLD` | Lowe's ratio test threshold |
+| `RANSAC_THRESHOLD` | RANSAC reprojection error threshold |
+| `RESEED_EVERY` | Frequency of adding new LK feature points |
+| `TRAIL_FADE` | Controls how quickly movement trails fade |
+| `GIF_METHOD` | Selects the tracking method used for GIF generation |
 
 ## Limitations
 
-- Assumes a static camera. Camera shake or panning makes the whole background look like motion.
-- Detection finds anything that moves, not specifically vehicles, so a pedestrian or cyclist would also get a box.
-- Boxes are detected independently in each frame, so vehicles do not keep a persistent ID across frames.
-- In dense traffic, MOG2 can split one large vehicle into two boxes or merge two close vehicles into one.
-- Vehicles that stop for a long time are gradually absorbed into the background and stop being detected.
-- Small or distant vehicles have few distinctive keypoints, so ORB and SIFT matching are less reliable on them.
-- Displacement is reported in pixels per frame, not real-world speed. Converting to km/h would need camera calibration.
+- Background subtraction can mistake other moving objects for vehicles.
+- Dense traffic can cause overlapping or merged bounding boxes.
+- Small or distant vehicles have fewer distinguishable features, making matching less reliable.
+- Feature points can be lost when vehicles move significantly between frames.
+- Camera movement in dashcam footage makes reliable motion estimation more challenging.
+- Dashcam vehicle tracking currently requires manually specified initial bounding boxes and starting frames.
+- Displacement is measured in pixels per frame rather than real-world speed. Camera calibration would be required to estimate actual vehicle speed.
 
-## Related techniques
+## Areas for Improvement
 
-The three trackers share the same detection stage, so their output can be compared directly. Lucas-Kanade is the fastest because it follows a small set of corner points. ORB uses compact binary descriptors, which are fast to compute and compare. SIFT uses larger floating-point descriptors that are more robust to scale and rotation changes but slower to compute and match. On the test clip the full 699 frames took about 52 s for Lucas-Kanade, 74 s for ORB and 148 s for SIFT; times will differ on other machines.
+- Implement automatic vehicle detection and initialization in dashcam footage.
+- Improve camera motion compensation.
+- Improve tracking when vehicles overlap or move close together.
+- Improve detection of distant vehicles.
+- Explore more robust tracking techniques under changing lighting and road conditions.
 
-## Tools
+## Tools and Libraries
 
-Python, OpenCV, NumPy, imageio, Pillow.
+- Python
+- OpenCV
+- NumPy
+- ImageIO
+- Pillow
+
+## Key Learning Outcomes
+
+This project helped develop a practical understanding of classical computer vision techniques, including feature detection, descriptor matching, sparse optical flow, background subtraction, motion estimation, and outlier rejection.
+
+Implementing three different tracking methods and testing them on both regular traffic and dashcam footage provided an opportunity to compare their performance and understand the challenges involved in vehicle motion tracking.
